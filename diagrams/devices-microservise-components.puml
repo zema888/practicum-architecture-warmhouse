@@ -1,0 +1,51 @@
+@startuml
+!include ./c4/C4_Component.puml
+AddRelTag("dotted", $textColor=$ARROW_FONT_COLOR, $lineColor=$ARROW_COLOR, $lineStyle=DottedLine())
+AddRelTag("dashed", $textColor=$ARROW_FONT_COLOR, $lineColor=$ARROW_COLOR, $lineStyle=DashedLine())
+
+Container(backend_api, "API Gateway", "", "Маршрутизация, проверка токенов")
+Container_Boundary(device_back, "Управление устройствами"){
+  Component(devices, "Регистрация/Удаление устройств", "Component: Регистрация/Удаление устройств", "API: добавить устройство, удалить устройство")
+  Component(telemetry, "Телеметрия", "Component: Телеметрия", "API получения телеметрии, преобразовывает ответ устройства во внутренний формат ответа, в зависимости от типа устройства")
+  Component(connector, "Связь с устройствами", "Component: Связь с устройствами", "Соединяется с устройствами в зависимости от их типа и настроек")
+  Component(management, "Управление", "Component: Управление", "API для запроса действия, статуса")
+  Component(triggers, "Триггеры", "Component: Настройка сценария работы устройства", "По событию завершения получения телеметрии для настроенных триггеров выполняет действия в зависимости от значения, API получения/создания/редактирования/удаление настроек триггеров")
+}
+Container_Ext(profile_back, "Профиль", "Container: Профиль", "Работа с пользователями и привязкой их устройств")
+Container_Ext(monitoring_back, "Мониторинг", "Container: Мониторинг", "По расписанию инициирует опрос телеметрии устройств, сохраняет результат")
+ContainerDb(device_db, "DB Управление устройствами", "PostgreSQL", "Справочник устройств(тип, настройки), Устройства в системе (ID устройства, данные для связи, тип), Триггеры(ИД устройств монитоинга, значение, действие)")
+System_Ext(user_devices, "", "Устройства пользователей")
+
+Rel(profile_back, devices, "Добавление устройства", "{type,data} => id_device", $tags="dotted")
+Rel(profile_back, devices, "Удаляет устройство ", "{id_device}", $tags="dotted")
+Rel_Neighbor(profile_back, management, "GET status/{id} (Состояние устройства)", "Текущее состояние")
+
+Rel(devices, device_db, "Читает и записывает данные устройств", "SQL", $tags="dotted")
+Rel(devices, device_db, "Читает и записывает данные устройств", "SQL", $tags="dotted")
+Rel(management, device_db, "Читает справочник устройств", "SQL", $tags="dotted")
+
+Rel_Neighbor(connector, telemetry,  "Данные телеметрии", "{id_device} => Response", $tags="dotted")
+Rel(user_devices, connector, "Данные телеметрии", "{data}", $tags="dotted")
+
+Rel_Neighbor(management, connector,  "Запрос действия", "{id_device, action}", $tags="dotted")
+Rel_Neighbor(management, connector,  "Запрос состояния", "{id_device}", $tags="dotted")
+Rel(connector, user_devices, "Запрос действия", "{data}", $tags="dotted")
+Rel(connector, user_devices, "Запрос состояния", "{status}", $tags="dotted")
+
+
+Rel(backend_api, management, "GET device-directory (справочник устройств)", "HTTPS JSON")
+Rel(backend_api, management, "POST action {выполнить действие)", "HTTPS JSON")
+Rel(backend_api, management, "GET status/{id} {узнать состояние устройства)", "HTTPS JSON")
+Rel(backend_api, triggers, "GET trigger (список триггеров пользователя)", "HTTPS JSON")
+Rel(backend_api, triggers, "POST trigger (добавить триггер пользователя)", "HTTPS JSON")
+Rel(backend_api, triggers, "PUT trigger/{id} (изменить триггер пользователя", "HTTPS JSON")
+Rel(backend_api, triggers, "DELETE trigger/{id} (удалить триггер пользователя)", "HTTPS JSON")
+
+Rel(monitoring_back, triggers,  "Сообщение об изменении значения телеметрии", "async", $tags="dashed")
+Rel(monitoring_back, telemetry, "Запрос телеметрии", "{id_device}", $tags="dotted")
+Rel(telemetry, monitoring_back, "Данные телеметрии", "{telemetry_data}", $tags="dotted")
+
+Rel(triggers, device_db, "Читает и записывает данные триггеров", "SQL", $tags="dotted")
+Rel(triggers, device_db, "Читает данные телеметрии", "SQL", $tags="dotted")
+Rel_Neighbor(triggers, management, "Запрос действия", "{id_device, action}")
+@enduml

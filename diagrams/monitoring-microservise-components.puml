@@ -1,0 +1,30 @@
+@startuml
+!include ./c4/C4_Component.puml
+AddRelTag("dotted", $textColor=$ARROW_FONT_COLOR, $lineColor=$ARROW_COLOR, $lineStyle=DottedLine())
+AddRelTag("dashed", $textColor=$ARROW_FONT_COLOR, $lineColor=$ARROW_COLOR, $lineStyle=DashedLine())
+
+
+Container(backend_api, "API Gateway", "", "Маршрутизация, проверка токенов")
+
+Container_Boundary(monitoring_back, "Мониторинг"){
+    Component(telemetry, "Телеметрия", "Component: Телеметрия", "По расписанию запрашивает данные телеметрии и сохраняет в базу, API получения телеметрии в зависимости от типа (файлы, цифровые данные)")
+ }
+Container_Ext(device_back, "Управление устройствами", "Микросервис", "Работает с устройствами в зависимости от типа, запрашивает телеметрию, отправляет команды, узнает статус устройства, регистрирует все устройства и назначает им ID")
+Container_Ext(profile_back, "Профиль", "Container: Профиль", "Работа с пользователями и привязкой их устройств")
+
+ContainerDb(monitoring_db, "DB Мониторинг", "PostgreSQL", "Справочник устройств(тип, способ хранения, действия), Устройство_мониторинга(ИД пользователя, ИД устройства, тип, частота опроса), Телеметрия(Дата, ID), Телеметрия_файлы(ID телеметрии, путь к файлу), Телеметрия_значения(ID телеметрии, значение)")
+
+
+Rel(telemetry, monitoring_db, "Читает и записывает данные телеметрии", "SQL", $tags="dotted")
+Rel(telemetry, monitoring_db, "Читает и записывает данные задач мониторинга", "SQL", $tags="dotted")
+Rel(telemetry, monitoring_db, "Читает данные справочника устройств, чтобы знать формат данных телеметрии", "SQL", $tags="dotted")
+Rel(telemetry, device_back, "Запрос телеметрии", "{id_device}", $tags="dotted")
+Rel(device_back, telemetry, "Данные телеметрии", "{telemetry_data}", $tags="dotted")
+Rel(profile_back, telemetry, "Удаляет устройство из мониторинга", "{id_device}", $tags="dotted")
+
+Rel(telemetry, device_back, "Сообщение об изменении значения телеметрии", "async", $tags="dashed")
+
+
+Rel(backend_api, telemetry, "POST telemetry (добавить устройство для мониторинга)", "HTTPS JSON")
+Rel(backend_api, telemetry, "GET telemetry/{id} (получить данные телеметрии)", "HTTPS JSON")
+@enduml

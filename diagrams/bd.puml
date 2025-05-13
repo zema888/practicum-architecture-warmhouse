@@ -1,0 +1,76 @@
+@startuml
+hide circle
+' === Profile ===
+package "Profile" {
+    entity User {
+      id : UUID <<PK>>
+      login : VARCHAR(255)
+      name : VARCHAR(255)
+      ip : INET
+    }
+
+    entity Device {
+      id : UUID <<PK>>
+      external_device_id : UUID
+      user_id : UUID <<FK>>
+    }
+
+    User ||--o{ Device : "owns"
+}
+
+package "Monitoring" {
+
+    entity DeviceDirectory {
+      type : VARCHAR(50) <<PK>>
+      data_type: VARCHAR(50)
+    }
+    entity Device {
+      id: UUID <<PK>>
+      external_device_id : UUID
+      type : VARCHAR(50)<<FK>>
+    }
+    entity Telemetry {
+      id: UUID <<PK>>
+      device_id : UUID <<FK>>
+      date : timestamp
+    }
+    entity TelemetryValueFile {
+      id: UUID <<PK>>
+      telemetry_id : UUID <<FK>>
+      path : VARCHAR(255)
+    }
+    entity TelemetryValueNumber {
+      id: UUID <<PK>>
+      telemetry_id : UUID <<FK>>
+      value : REAL
+    }
+    DeviceDirectory ||--o{ Device : "defines"
+    Telemetry ||--o{ TelemetryValueFile : "extends"
+    Telemetry ||--o{ TelemetryValueNumber : "extends"
+    Device ||--o{ Telemetry : "records"
+}
+
+package "Devices" {
+    entity DeviceDirectory {
+      type : VARCHAR(50) <<PK>>
+      settings : JSONB
+      actions : JSONB
+    }
+
+    entity Device {
+      device_id : UUID <<PK>>
+      type : VARCHAR(50) <<FK>>
+    }
+
+    entity Trigger {
+      id: UUID <<PK>>
+      device_id : UUID <<FK>>
+      value : REAL
+      action: VARCHAR(50)
+    }
+
+     DeviceDirectory ||--o{ Device : "defines"
+     Device ||--o{ Trigger : "has"
+}
+
+@enduml

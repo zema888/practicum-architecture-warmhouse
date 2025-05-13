@@ -1,0 +1,40 @@
+@startuml
+!include ./c4/C4_Component.puml
+AddRelTag("dotted", $textColor=$ARROW_FONT_COLOR, $lineColor=$ARROW_COLOR, $lineStyle=DottedLine())
+AddRelTag("dashed", $textColor=$ARROW_FONT_COLOR, $lineColor=$ARROW_COLOR, $lineStyle=DashedLine())
+
+Container(backend_api, "API Gateway", "", "Маршрутизация, проверка токенов")
+
+Container_Boundary(profile_back, "Профиль"){
+  Component(auth, "Auth", "Component: Авторизации/Регистрации", "API для фронта: Регистрации пользователя, авторизации")
+  Component(security, "Security", "Component: Security", "Данные о текущем пользователе")
+  Component(profile, "Profile", "Component: Профиль", "API для фронта: Данные профиля (ip)")
+  Component(devices, "Устройства", "Component: Устройства", "API для фронта: Добавление удаление устройств")
+}
+Container_Ext(device_back, "Управление устройствами", "Микросервис", "Работает с устройствами в зависимости от типа, запрашивает телеметрию, отправляет команды, узнает статус устройства, регистрирует все устройства и назначает им ID")
+Container_Ext(monitoring_back, "Мониторинг", "Container: Мониторинг", "По расписанию инициирует опрос телеметрии устройств, сохраняет результат")
+
+ContainerDb(profile_db, "DB Профиля", "PostgreSQL", "Пользователи, Устройства пользователей (пользователь, тип, ID устройства)")
+
+
+Rel(backend_api, auth, "POST user (зарегистрировать)", "HTTPS JSON {login, password}", $tags="dotted")
+Rel(backend_api, auth, "POST login", "HTTPS JSON {login, password}", $tags="dotted")
+Rel(backend_api, profile, "PUT user (заменить данные пользователя)", "HTTPS JSON {ip}", $tags="dotted")
+Rel(backend_api, devices, "GET device (привязанные устройства пользователя)", "HTTPS JSON", $tags="dotted")
+Rel(backend_api, devices, "POST device (привязать устройство к пользователю)", "HTTPS JSON {type,data}", $tags="dotted")
+
+
+
+Rel_Neighbor(auth, security, "Пользователь", "User")
+Rel_Neighbor(security, profile, "Текущий пользователь", "User")
+Rel(security, profile_db, "Читает и записывает данные пользователя", "SQL", $tags="dashed")
+Rel(profile, profile_db, "Читает и записывает данные пользователя (ip)", "SQL", $tags="dashed")
+Rel(devices, profile_db, "Читает и записывает данные устройств", "SQL", $tags="dashed")
+
+
+Rel(devices, monitoring_back, "Отправка устройства на мониторинг", "{id_device, id_user, type_device}", $tags="dashed")
+Rel(devices, monitoring_back, "Удаляет устройство из мониторинга", "{id_device}", $tags="dashed")
+Rel(devices, device_back, "Добавление устройства", "{type,data} => id_device", $tags="dashed")
+Rel(devices, device_back, "Удаляет устройство ", "{id_device}", $tags="dashed")
+Rel(devices, device_back, "GET status/{id} (Состояние устройства)", "Текущее состояние")
+@enduml

@@ -1,0 +1,60 @@
+@startuml
+!include <C4/C4_Container>
+
+
+AddRelTag("dashed", $textColor=$ARROW_FONT_COLOR, $lineColor=$ARROW_COLOR, $lineStyle=DashedLine())
+
+Person(usr, "Пользователь", "")
+Container(front, "Web Application", "Single-Page App", "Фронтенд")
+
+System_Boundary(c0, "Тёплый дом"){
+    Container(backend_api, "API Gateway", "", "Маршрутизация, проверка токенов")
+    System_Boundary(profile, "Поддомен профиль"){
+        Container(profile_back, "Профиль", "Микросервис", "Работа с пользователями и привязкой их устройств")
+        ContainerDb(profile_db, "DB Профиля", "PostgreSQL", "Пользователи, Устройства пользователей (пользователь, тип, ID устройства)")
+    }
+    System_Boundary(device, "Поддомен Управление устройствами"){
+        Container(device_back, "Управление устройствами", "Микросервис", "Работает с устройствами в зависимости от типа, запрашивает телеметрию, отправляет команды, узнает статус устройства, регистрирует все устройства и назначает им ID")
+        ContainerDb(device_db, "DB Управление устройствами", "PostgreSQL", "Справочник устройств(тип, настройки, действия), Устройства в системе (ID устройства, данные для связи, тип, статус), Триггеры(ИД устройств монитоинга, значение, действие)")
+    }
+    System_Boundary(monitoring, "Поддомен мониторинг"){
+        Container(monitoring_back, "Мониторинг", "Микросервис", "По расписанию инициирует опрос телеметрии устройств, сохраняет результат")
+        ContainerDb(monitoring_db, "DB Мониторинг", "PostgreSQL", "Справочник устройств(тип, способ хранения, действия), Устройство_мониторинга(ИД пользователя, ИД устройства, тип, частота опроса), Телеметрия(Дата, ID), Телеметрия_файлы(ID телеметрии, путь к файлу), Телеметрия_значения(ID телеметрии, значение)")
+    }
+}
+
+Rel(usr, front, "Регистрируется, привязывает устройства, смотрит телеметрию, настраивает сценарии работы", "HTTPS JSON")
+Rel(front, backend_api, "Запросы от фронта", "HTTPS JSON")
+Rel(backend_api, profile_back, "POST user (зарегистрировать)", "HTTPS JSON")
+Rel(backend_api, profile_back, "POST login", "HTTPS JSON")
+Rel(backend_api, profile_back, "PUT user (заменить данные пользователя)", "HTTPS JSON")
+Rel(backend_api, profile_back, "GET device (привязанные устройства пользователя)", "HTTPS JSON")
+Rel(backend_api, profile_back, "POST device (привязать устройство к пользователю)", "HTTPS JSON")
+
+
+Rel(backend_api, device_back, "GET device-directory (справочник устройств)", "HTTPS JSON")
+Rel(backend_api, device_back, "GET trigger (список триггеров пользователя)", "HTTPS JSON")
+Rel(backend_api, device_back, "POST trigger (добавить триггер пользователя)", "HTTPS JSON")
+Rel(backend_api, device_back, "PUT trigger/{id} (изменить триггер пользователя", "HTTPS JSON")
+Rel(backend_api, device_back, "DELETE trigger/{id} (удалить триггер пользователя)", "HTTPS JSON")
+Rel(backend_api, device_back, "POST action {выполнить действие)", "HTTPS JSON")
+Rel(backend_api, device_back, "GET status/{id} {узнать состояние устройства)", "HTTPS JSON")
+
+
+Rel(backend_api, monitoring_back, "POST telemetry (добавить устройство для мониторинга)", "HTTPS JSON")
+Rel(backend_api, monitoring_back, "GET telemetry/{id} (получить данные телеметрии)", "HTTPS JSON")
+
+Rel(profile_back, profile_db, "Читает и записывает данные (пользователи, устройства пользователей)", "SQL")
+Rel(device_back, device_db, "Получает справочник устройств или настройки какого-то устройства, Триггеры", "SQL")
+Rel(monitoring_back, monitoring_db, "Читает и записывает данные (Устройство_мониторинга,  Телеметрия)", "SQL")
+
+
+Rel_Neighbor(profile_back, monitoring_back, "Отправляет устройство на мониторинг", "ID устройства, тип, ИД пользователя")
+Rel_Neighbor(profile_back, monitoring_back, "Удаляет устройство из мониторинга", "ID устройства")
+Rel_Neighbor(profile_back, device_back, "POST device (зарегистрировать устройство)", "ID устройства")
+Rel_Neighbor(profile_back, device_back, "GET status/{id} (Состояние устройства)", "Текущее состояние")
+Rel_Neighbor(monitoring_back, device_back, "GET telemetry/{id} {узнать телеметрию устройства)", "HTTPS JSON")
+
+
+Rel_Neighbor(profile_back, device_back, "Сообщение об изменении значения телеметрии", "async", $tags="dashed")
+@enduml

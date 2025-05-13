@@ -1,0 +1,17 @@
+@startuml
+!include <C4/C4_Context>
+
+Person(usr, "Пользователь", "")
+Person(adm, "Администратор", "")
+
+System_Boundary(c1, "Тёплый дом"){
+    System(app, "Приложение")
+    System(api, "API")
+    SystemDb(pg, "PostgreSQL")
+}
+
+Rel(usr, app, "Проверяет и обновляет состояние датчиков", "HTTPS JSON")
+Rel(adm, app, "Регистрирует датчики", "HTTPS JSON")
+Rel(app, api, "Использует", "HTTPS JSON")
+Rel(api, pg, "Читает и записывает данные датчиков", "SQL")
+@enduml
