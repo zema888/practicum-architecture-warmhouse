@@ -19,25 +19,19 @@ ContainerDb_Ext(device_db, "DB Управление устройствами", "
 System_Ext(user_devices, "", "Устройства пользователей")
 
 Rel(profile_back, devices, "Добавление/Удаляет устройства", "HTTPS JSON")
-Rel_Neighbor(profile_back, management, "Состояние устройства", "HTTPS JSON")
+Rel(monitoring_back, telemetry, "Запрос телеметрии", "HTTPS JSON")
+Rel(connector, user_devices, "Запрос действия, телеметрии, состояния")
 
 Rel(devices, device_db, "данные устройств", "SQL")
 Rel(management, device_db, "Читает справочник устройств", "SQL")
 
-Rel_Neighbor(connector, telemetry,  "Данные телеметрии")
-Rel(user_devices, connector, "Данные телеметрии")
+Rel_Neighbor(telemetry, connector,  "Запрос состояния, телеметрии")
 
 Rel_Neighbor(management, connector,  "Запрос действия")
-Rel_Neighbor(management, connector,  "Запрос состояния")
-Rel(connector, user_devices, "Запрос действия")
-Rel(connector, user_devices, "Запрос состояния")
-
 
 Rel(backend_api, management, "справочник устройств, действие", "HTTPS JSON")
 Rel(backend_api, telemetry, "состояние", "HTTPS JSON")
 Rel(triggers_back, telemetry, "Запрос статуса", "HTTPS JSON")
 Rel(triggers_back, management, "Действие", "HTTPS JSON")
-
-Rel(monitoring_back, telemetry, "Запрос телеметрии", "{id_device} => {telemetry_data}")
 
 @enduml

@@ -54,5 +54,5 @@ Rel(queue, triggers_back, "Сообщение о значении телемет
 Rel(backend_api, triggers_back, "настройки триггеров", "HTTPS JSON")
 Rel_Neighbor(triggers_back, device_back, "Запрос действия", "HTTPS JSON")
 
-Rel(user_devices, device_back, "Запрос действия, телеметрии, состояния")
+Rel(device_back, user_devices, "Запрос действия, телеметрии, состояния")
 @enduml
