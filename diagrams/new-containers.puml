@@ -11,50 +11,48 @@ System_Boundary(c0, "Тёплый дом"){
     Container(backend_api, "API Gateway", "", "Маршрутизация, проверка токенов")
     System_Boundary(profile, "Поддомен профиль"){
         Container(profile_back, "Профиль", "Микросервис", "Работа с пользователями и привязкой их устройств")
-        ContainerDb(profile_db, "DB Профиля", "PostgreSQL", "Пользователи, Устройства пользователей (пользователь, тип, ID устройства)")
+        ContainerDb(profile_db, "DB Профиля", "PostgreSQL", "Пользователи, Устройства пользователей")
     }
     System_Boundary(device, "Поддомен Управление устройствами"){
         Container(device_back, "Управление устройствами", "Микросервис", "Работает с устройствами в зависимости от типа, запрашивает телеметрию, отправляет команды, узнает статус устройства, регистрирует все устройства и назначает им ID")
-        ContainerDb(device_db, "DB Управление устройствами", "PostgreSQL", "Справочник устройств(тип, настройки, действия), Устройства в системе (ID устройства, данные для связи, тип, статус), Триггеры(ИД устройств монитоинга, значение, действие)")
+        ContainerDb(device_db, "DB Управление устройствами", "PostgreSQL", "Справочник устройств, Устройства в системе")
     }
     System_Boundary(monitoring, "Поддомен мониторинг"){
         Container(monitoring_back, "Мониторинг", "Микросервис", "По расписанию инициирует опрос телеметрии устройств, сохраняет результат")
-        ContainerDb(monitoring_db, "DB Мониторинг", "PostgreSQL", "Справочник устройств(тип, способ хранения, действия), Устройство_мониторинга(ИД пользователя, ИД устройства, тип, частота опроса), Телеметрия(Дата, ID), Телеметрия_файлы(ID телеметрии, путь к файлу), Телеметрия_значения(ID телеметрии, значение)")
+        ContainerDb(monitoring_db, "DB Мониторинг", "PostgreSQL", "Справочник устройств, Устройство_мониторинга, Телеметрия")
     }
+    System_Boundary(triggers, "Триггеры"){
+        Container(triggers_back, "Триггеры", "Триггеры", "Работа с триггерами")
+        ContainerDb(triggers_db, "DB Триггеры", "PostgreSQL", "Читает и записывает данные триггеров")
+    }
+    ContainerQueue(queue, "Брокер сообщений", "AMPQ")
 }
+System_Ext(user_devices, "", "Устройства пользователей")
 
 Rel(usr, front, "Регистрируется, привязывает устройства, смотрит телеметрию, настраивает сценарии работы", "HTTPS JSON")
 Rel(front, backend_api, "Запросы от фронта", "HTTPS JSON")
-Rel(backend_api, profile_back, "POST user (зарегистрировать)", "HTTPS JSON")
-Rel(backend_api, profile_back, "POST login", "HTTPS JSON")
-Rel(backend_api, profile_back, "PUT user (заменить данные пользователя)", "HTTPS JSON")
-Rel(backend_api, profile_back, "GET device (привязанные устройства пользователя)", "HTTPS JSON")
-Rel(backend_api, profile_back, "POST device (привязать устройство к пользователю)", "HTTPS JSON")
+Rel(backend_api, profile_back, "Регистрация,авторизация,данные пользователя,устройства пользователя", "HTTPS JSON")
 
 
-Rel(backend_api, device_back, "GET device-directory (справочник устройств)", "HTTPS JSON")
-Rel(backend_api, device_back, "GET trigger (список триггеров пользователя)", "HTTPS JSON")
-Rel(backend_api, device_back, "POST trigger (добавить триггер пользователя)", "HTTPS JSON")
-Rel(backend_api, device_back, "PUT trigger/{id} (изменить триггер пользователя", "HTTPS JSON")
-Rel(backend_api, device_back, "DELETE trigger/{id} (удалить триггер пользователя)", "HTTPS JSON")
-Rel(backend_api, device_back, "POST action {выполнить действие)", "HTTPS JSON")
-Rel(backend_api, device_back, "GET status/{id} {узнать состояние устройства)", "HTTPS JSON")
+Rel(backend_api, device_back, "Cправочник устройств, действие, состояние", "HTTPS JSON")
 
 
-Rel(backend_api, monitoring_back, "POST telemetry (добавить устройство для мониторинга)", "HTTPS JSON")
-Rel(backend_api, monitoring_back, "GET telemetry/{id} (получить данные телеметрии)", "HTTPS JSON")
+Rel(backend_api, monitoring_back, "Данные телеметрии", "HTTPS JSON")
 
 Rel(profile_back, profile_db, "Читает и записывает данные (пользователи, устройства пользователей)", "SQL")
 Rel(device_back, device_db, "Получает справочник устройств или настройки какого-то устройства, Триггеры", "SQL")
 Rel(monitoring_back, monitoring_db, "Читает и записывает данные (Устройство_мониторинга,  Телеметрия)", "SQL")
 
 
-Rel_Neighbor(profile_back, monitoring_back, "Отправляет устройство на мониторинг", "ID устройства, тип, ИД пользователя")
-Rel_Neighbor(profile_back, monitoring_back, "Удаляет устройство из мониторинга", "ID устройства")
-Rel_Neighbor(profile_back, device_back, "POST device (зарегистрировать устройство)", "ID устройства")
-Rel_Neighbor(profile_back, device_back, "GET status/{id} (Состояние устройства)", "Текущее состояние")
+Rel_Neighbor(profile_back, monitoring_back, "Добавить/удалить устройство на мониторинг", "HTTPS JSON")
+Rel_Neighbor(profile_back, device_back, "Регистрация устройств, состояние", "HTTPS JSON")
 Rel_Neighbor(monitoring_back, device_back, "GET telemetry/{id} {узнать телеметрию устройства)", "HTTPS JSON")
 
 
-Rel_Neighbor(profile_back, device_back, "Сообщение об изменении значения телеметрии", "async", $tags="dashed")
+Rel_Neighbor(monitoring_back, queue, "Сообщение о значении телеметрии", "async", $tags="dashed")
+Rel(queue, triggers_back, "Сообщение о значении телеметрии", "async", $tags="dashed")
+Rel(backend_api, triggers_back, "настройки триггеров", "HTTPS JSON")
+Rel_Neighbor(triggers_back, device_back, "Запрос действия", "HTTPS JSON")
+
+Rel(user_devices, device_back, "Запрос действия, телеметрии, состояния")
 @enduml

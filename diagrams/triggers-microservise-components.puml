@@ -1,0 +1,22 @@
+@startuml
+!include ./c4/C4_Component.puml
+AddRelTag("dotted", $textColor=$ARROW_FONT_COLOR, $lineColor=$ARROW_COLOR, $lineStyle=DottedLine())
+AddRelTag("dashed", $textColor=$ARROW_FONT_COLOR, $lineColor=$ARROW_COLOR, $lineStyle=DashedLine())
+
+Container_Ext(backend_api, "API Gateway", "", "Маршрутизация, проверка токенов")
+Container_Boundary(triggers_back, "Триггеры"){
+  Component(triggers, "Триггеры", "Component: Настройка сценария работы устройства", "По событию завершения получения телеметрии для настроенных триггеров выполняет действия в зависимости от значения, API получения/создания/редактирования/удаление настроек триггеров")
+ }
+
+Container_Ext(device_back, "Управление устройствами", "Микросервис", "Работает с устройствами в зависимости от типа")
+
+ContainerDb_Ext(triggers_db, "DB Триггеры", "PostgreSQL", "Триггеры")
+ContainerQueue_Ext(queue, "Брокер сообщений", "AMPQ")
+
+Rel(backend_api, triggers, "настройки триггеров", "HTTPS JSON")
+Rel_Neighbor(triggers, device_back, "Запрос действия", "HTTPS JSON")
+
+Rel(queue, triggers,  "Сообщение об изменении значения телеметрии", "async", $tags="dashed")
+
+Rel(triggers, triggers_db, "Читает и записывает данные триггеров", "SQL", $tags="dotted")
+@enduml

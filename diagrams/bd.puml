@@ -62,15 +62,16 @@ package "Devices" {
       type : VARCHAR(50) <<FK>>
     }
 
+     DeviceDirectory ||--o{ Device : "defines"
+}
+
+package "Triggers" {
     entity Trigger {
       id: UUID <<PK>>
       device_id : UUID <<FK>>
       value : REAL
       action: VARCHAR(50)
     }
-
-     DeviceDirectory ||--o{ Device : "defines"
-     Device ||--o{ Trigger : "has"
 }
 
 @enduml
